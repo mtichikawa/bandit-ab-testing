@@ -1,204 +1,212 @@
-'''
-Thompson Sampling Multi-Armed Bandit
-Bayesian approach using Beta distributions
-'''
+"""
+bandits/algorithms.py — UCB1, EpsilonGreedy, and simulation utilities.
+
+ThompsonSampling lives in bandits/thompson.py (its natural home) and is
+re-exported here for backward compatibility:
+
+    from bandits.algorithms import ThompsonSampling  # works
+    from bandits.thompson   import ThompsonSampling  # also works
+"""
 
 import numpy as np
-from typing import List, Tuple
+from typing import List, Optional
 
-
-class ThompsonSampling:
-    '''Thompson Sampling bandit for A/B testing'''
-    
-    def __init__(self, n_arms: int):
-        '''
-        Initialize bandit
-        
-        Args:
-            n_arms: Number of variants to test
-        '''
-        self.n_arms = n_arms
-        # Beta distribution parameters
-        self.alpha = np.ones(n_arms)  # Successes + 1
-        self.beta = np.ones(n_arms)   # Failures + 1
-        
-        # Tracking
-        self.pulls = np.zeros(n_arms)
-        self.rewards = np.zeros(n_arms)
-        
-    def select_arm(self) -> int:
-        '''Select arm by sampling from Beta distributions'''
-        samples = np.random.beta(self.alpha, self.beta)
-        return int(np.argmax(samples))
-        
-    def update(self, arm: int, reward: float):
-        '''Update after observing reward'''
-        self.pulls[arm] += 1
-        self.rewards[arm] += reward
-        
-        if reward > 0:
-            self.alpha[arm] += 1
-        else:
-            self.beta[arm] += 1
-            
-    def get_means(self) -> np.ndarray:
-        '''Get estimated conversion rate for each arm'''
-        return self.alpha / (self.alpha + self.beta)
-        
-    def get_best_arm(self) -> int:
-        '''Get arm with highest estimated rate'''
-        return int(np.argmax(self.get_means()))
-        
-    def get_probabilities(self) -> np.ndarray:
-        '''Get probability each arm is best (Monte Carlo)'''
-        n_samples = 10000
-        samples = np.random.beta(
-            self.alpha[:, np.newaxis],
-            self.beta[:, np.newaxis],
-            size=(self.n_arms, n_samples)
-        )
-        
-        best_arm = np.argmax(samples, axis=0)
-        probs = np.bincount(best_arm, minlength=self.n_arms) / n_samples
-        
-        return probs
-        
-    def get_regret(self, true_rates: np.ndarray) -> float:
-        '''Calculate cumulative regret given true conversion rates'''
-        best_rate = np.max(true_rates)
-        chosen_rates = true_rates[np.arange(len(self.pulls)).astype(int)]
-        regret = np.sum(self.pulls * (best_rate - chosen_rates))
-        return regret
-        
-    def __repr__(self):
-        return f'ThompsonSampling(n_arms={self.n_arms}, pulls={self.pulls})'
+# Re-export ThompsonSampling so any existing code importing it from here
+# continues to work without changes.
+from bandits.thompson import ThompsonSampling  # noqa: F401  (re-export)
 
 
 class UCB1:
-    '''UCB1 (Upper Confidence Bound) bandit'''
-    
-    def __init__(self, n_arms: int):
+    """
+    UCB1 (Upper Confidence Bound) bandit algorithm.
+
+    Balances exploration and exploitation by adding a confidence bonus to each
+    arm's mean reward. The bonus grows for arms that have been pulled rarely
+    relative to the total number of pulls, ensuring every arm is eventually
+    explored.
+
+    Args:
+        n_arms: Number of arms / variants.
+        seed:   Optional random seed (used only if random tie-breaking is needed).
+    """
+
+    def __init__(self, n_arms: int, seed: Optional[int] = None):
         self.n_arms = n_arms
-        self.pulls = np.zeros(n_arms)
-        self.rewards = np.zeros(n_arms)
+        self._rng = np.random.default_rng(seed)
+        self.pulls = np.zeros(n_arms, dtype=float)
+        self.rewards = np.zeros(n_arms, dtype=float)
         self.total_pulls = 0
-        
+
     def select_arm(self) -> int:
-        '''Select arm with highest UCB'''
-        # Pull each arm once first
+        """
+        Select the arm with the highest UCB score.
+
+        During the warm-up phase (total pulls < n_arms) each arm is pulled
+        exactly once in order to get an initial estimate before computing UCBs.
+
+        Returns:
+            Index of the selected arm.
+        """
+        # Warm-up: pull each arm once before computing UCB values
         if self.total_pulls < self.n_arms:
             return self.total_pulls
-            
-        means = self.rewards / np.maximum(self.pulls, 1)
-        bonus = np.sqrt(2 * np.log(self.total_pulls) / np.maximum(self.pulls, 1))
-        ucb = means + bonus
-        
-        return int(np.argmax(ucb))
-        
-    def update(self, arm: int, reward: float):
-        '''Update statistics'''
-        self.pulls[arm] += 1
+
+        means  = self.rewards / np.maximum(self.pulls, 1)
+        bonus  = np.sqrt(2 * np.log(self.total_pulls) / np.maximum(self.pulls, 1))
+        return int(np.argmax(means + bonus))
+
+    def update(self, arm: int, reward: float) -> None:
+        """
+        Record the result of pulling an arm.
+
+        Args:
+            arm:    Index of the arm that was pulled.
+            reward: Observed reward (0 or 1 for Bernoulli).
+        """
+        self.pulls[arm]   += 1
         self.rewards[arm] += reward
-        self.total_pulls += 1
-        
+        self.total_pulls  += 1
+
     def get_best_arm(self) -> int:
-        '''Get arm with highest mean reward'''
+        """Return the arm with the highest empirical mean reward."""
         means = self.rewards / np.maximum(self.pulls, 1)
         return int(np.argmax(means))
+
+    def __repr__(self) -> str:
+        return f"UCB1(n_arms={self.n_arms}, total_pulls={self.total_pulls})"
 
 
 class EpsilonGreedy:
-    '''Epsilon-Greedy bandit'''
-    
-    def __init__(self, n_arms: int, epsilon: float = 0.1):
-        self.n_arms = n_arms
+    """
+    Epsilon-Greedy bandit algorithm.
+
+    With probability epsilon the algorithm explores (pulls a random arm).
+    With probability 1 - epsilon it exploits (pulls the current best arm).
+
+    Args:
+        n_arms:  Number of arms / variants.
+        epsilon: Exploration probability in [0, 1]. Default 0.1 (10% explore).
+        seed:    Optional random seed for reproducibility.
+    """
+
+    def __init__(self, n_arms: int, epsilon: float = 0.1, seed: Optional[int] = None):
+        self.n_arms  = n_arms
         self.epsilon = epsilon
-        self.pulls = np.zeros(n_arms)
-        self.rewards = np.zeros(n_arms)
-        
+        self._rng    = np.random.default_rng(seed)
+        self.pulls   = np.zeros(n_arms, dtype=float)
+        self.rewards = np.zeros(n_arms, dtype=float)
+
     def select_arm(self) -> int:
-        '''Select arm using epsilon-greedy strategy'''
-        if np.random.random() < self.epsilon:
-            # Explore: random arm
-            return np.random.randint(self.n_arms)
-        else:
-            # Exploit: best arm
-            means = self.rewards / np.maximum(self.pulls, 1)
-            return int(np.argmax(means))
-            
-    def update(self, arm: int, reward: float):
-        '''Update statistics'''
-        self.pulls[arm] += 1
+        """
+        Select an arm using epsilon-greedy strategy.
+
+        Returns:
+            Index of the arm to pull.
+        """
+        if self._rng.random() < self.epsilon:
+            return int(self._rng.integers(self.n_arms))   # explore
+        means = self.rewards / np.maximum(self.pulls, 1)
+        return int(np.argmax(means))                       # exploit
+
+    def update(self, arm: int, reward: float) -> None:
+        """
+        Record the result of pulling an arm.
+
+        Args:
+            arm:    Index of the arm that was pulled.
+            reward: Observed reward.
+        """
+        self.pulls[arm]   += 1
         self.rewards[arm] += reward
-        
+
     def get_best_arm(self) -> int:
-        '''Get arm with highest mean reward'''
+        """Return the arm with the highest empirical mean reward."""
         means = self.rewards / np.maximum(self.pulls, 1)
         return int(np.argmax(means))
 
+    def __repr__(self) -> str:
+        return f"EpsilonGreedy(n_arms={self.n_arms}, epsilon={self.epsilon})"
 
-def simulate_test(true_rates: List[float], n_trials: int, algorithm='thompson'):
-    '''
-    Simulate A/B test with given algorithm
-    
+
+# ── Simulation utility ─────────────────────────────────────────────────────────
+
+def simulate_test(
+    true_rates: List[float],
+    n_trials: int,
+    algorithm: str = "thompson",
+    seed: Optional[int] = None,
+) -> dict:
+    """
+    Simulate an A/B test using the specified bandit algorithm.
+
     Args:
-        true_rates: True conversion rate for each variant
-        n_trials: Number of trials to run
-        algorithm: 'thompson', 'ucb', or 'epsilon'
-        
+        true_rates: True conversion rate for each variant (arm).
+        n_trials:   Number of trials (user visits / observations) to simulate.
+        algorithm:  One of 'thompson', 'ucb', or 'epsilon'.
+        seed:       Optional random seed for reproducibility. Passed to both
+                    the bandit and the reward-generation RNG.
+
     Returns:
-        Dict with results
-    '''
+        Dictionary with keys:
+            algorithm        - algorithm name used
+            best_arm         - arm the bandit converged on
+            true_best        - arm with the highest true rate
+            pulls            - array of pull counts per arm
+            rewards          - array of total rewards per arm
+            conversion_rates - empirical conversion rate per arm
+            regret           - cumulative regret (scalar float)
+            regret_pct       - regret as percentage of total trials
+    """
+    rng = np.random.default_rng(seed)
     n_arms = len(true_rates)
-    true_rates = np.array(true_rates)
-    
-    # Initialize bandit
-    if algorithm == 'thompson':
-        bandit = ThompsonSampling(n_arms)
-    elif algorithm == 'ucb':
-        bandit = UCB1(n_arms)
+    true_rates_arr = np.array(true_rates)
+
+    # Initialise bandit
+    if algorithm == "thompson":
+        bandit = ThompsonSampling(n_arms, seed=seed)
+    elif algorithm == "ucb":
+        bandit = UCB1(n_arms, seed=seed)
     else:
-        bandit = EpsilonGreedy(n_arms)
-        
+        bandit = EpsilonGreedy(n_arms, seed=seed)
+
     # Run simulation
     for _ in range(n_trials):
-        arm = bandit.select_arm()
-        reward = 1 if np.random.random() < true_rates[arm] else 0
+        arm    = bandit.select_arm()
+        reward = 1 if rng.random() < true_rates_arr[arm] else 0
         bandit.update(arm, reward)
-        
-    # Calculate results
-    best_arm = np.argmax(true_rates)
-    regret = n_trials * true_rates[best_arm] - np.sum(bandit.rewards)
-    
-    results = {
-        'algorithm': algorithm,
-        'best_arm': bandit.get_best_arm(),
-        'true_best': best_arm,
-        'pulls': bandit.pulls,
-        'rewards': bandit.rewards,
-        'conversion_rates': bandit.rewards / np.maximum(bandit.pulls, 1),
-        'regret': regret,
-        'regret_pct': (regret / n_trials) * 100
+
+    # Cumulative regret = rewards we would have earned pulling the best arm
+    # every trial, minus the rewards we actually earned.
+    best_rate     = float(np.max(true_rates_arr))
+    total_rewards = float(np.sum(bandit.rewards))
+    regret        = best_rate * n_trials - total_rewards
+
+    return {
+        "algorithm":        algorithm,
+        "best_arm":         bandit.get_best_arm(),
+        "true_best":        int(np.argmax(true_rates_arr)),
+        "pulls":            bandit.pulls,
+        "rewards":          bandit.rewards,
+        "conversion_rates": bandit.rewards / np.maximum(bandit.pulls, 1),
+        "regret":           regret,
+        "regret_pct":       (regret / n_trials) * 100,
     }
-    
-    return results
 
 
-if __name__ == '__main__':
-    # Example usage
-    print('Thompson Sampling Demo')
-    print('=' * 50)
-    
-    # Simulate test with two variants
+if __name__ == "__main__":
+    print("Multi-Armed Bandit Demo")
+    print("=" * 50)
+
     results = simulate_test(
         true_rates=[0.10, 0.12],  # Variant B is 20% better
-        n_trials=10000,
-        algorithm='thompson'
+        n_trials=10_000,
+        algorithm="thompson",
+        seed=42,
     )
-    
-    print(f'\nResults:')
-    print(f'  Detected best: Variant {results["best_arm"]}')
-    print(f'  True best: Variant {results["true_best"]}')
-    print(f'  Pulls: {results["pulls"]}')
-    print(f'  Conversion rates: {results["conversion_rates"]}')
-    print(f'  Regret: {results["regret"]:.0f} ({results["regret_pct"]:.2f}%)')
+
+    print(f"\nResults after {10_000:,} trials:")
+    print(f"  Detected best arm : Variant {results['best_arm']}")
+    print(f"  True best arm     : Variant {results['true_best']}")
+    print(f"  Pulls             : {results['pulls']}")
+    print(f"  Conversion rates  : {[round(r, 4) for r in results['conversion_rates']]}")
+    print(f"  Cumulative regret : {results['regret']:.1f} ({results['regret_pct']:.2f}%)")
