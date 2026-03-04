@@ -13,8 +13,11 @@ References:
     Biometrika, 25(3/4), 285–294.
 """
 
+import logging
 import numpy as np
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 
 class ThompsonSampling:
