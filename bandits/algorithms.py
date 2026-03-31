@@ -126,6 +126,7 @@ class EpsilonGreedy:
         return int(np.argmax(means))
 
     def __repr__(self) -> str:
+        """Return a human-readable summary of the bandit state."""
         return f"EpsilonGreedy(n_arms={self.n_arms}, epsilon={self.epsilon})"
 
 
