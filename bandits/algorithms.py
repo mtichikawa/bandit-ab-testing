@@ -159,7 +159,7 @@ def simulate_test(
             regret           - cumulative regret (scalar float)
             regret_pct       - regret as percentage of total trials
     """
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)  # separate RNG: keeps reward draws independent of bandit's own RNG state
     n_arms = len(true_rates)
     true_rates_arr = np.array(true_rates)
 
