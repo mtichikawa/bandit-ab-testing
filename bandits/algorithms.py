@@ -191,7 +191,7 @@ def simulate_test(
         "rewards":          bandit.rewards,
         "conversion_rates": bandit.rewards / np.maximum(bandit.pulls, 1),
         "regret":           regret,
-        "regret_pct":       (regret / n_trials) * 100,
+        "regret_pct":       (regret / n_trials) * 100,  # regret as % of oracle reward (always pulling the true best arm)
     }
 
 
