@@ -47,7 +47,7 @@ class UCB1:
         Returns:
             Index of the selected arm.
         """
-        # Warm-up: pull each arm once before computing UCB values
+        # Warm-up: guarantees each arm has at least one observation before UCB scores diverge
         if self.total_pulls < self.n_arms:
             return self.total_pulls
 
