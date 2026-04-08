@@ -52,7 +52,7 @@ class ThompsonSampling:
         self.n_arms = n_arms
         self._rng = np.random.default_rng(seed)
 
-        # Beta distribution parameters — start at uniform Beta(1,1)
+        # Beta(1,1) is the uniform prior — no arm is favoured before any data
         self.alpha = np.ones(n_arms, dtype=float)   # alpha = successes + 1
         self.beta  = np.ones(n_arms, dtype=float)   # beta  = failures  + 1
 
