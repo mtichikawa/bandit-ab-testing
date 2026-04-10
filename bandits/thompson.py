@@ -124,7 +124,7 @@ class ThompsonSampling:
 
         Args:
             n_samples: Number of Monte Carlo draws per arm. Higher = more accurate
-                       but slower. Default 10,000 gives ~1% standard error.
+                       but slower. Default 10,000 gives ~1% standard error (sqrt(p(1-p)/n)).
 
         Returns:
             Array of shape (n_arms,) summing to ~1.0.
