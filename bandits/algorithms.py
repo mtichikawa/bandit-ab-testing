@@ -177,11 +177,12 @@ def simulate_test(
         reward = 1 if rng.random() < true_rates_arr[arm] else 0
         bandit.update(arm, reward)
 
-    # Cumulative regret = rewards we would have earned pulling the best arm
-    # every trial, minus the rewards we actually earned.
-    best_rate     = float(np.max(true_rates_arr))
-    total_rewards = float(np.sum(bandit.rewards))
-    regret        = best_rate * n_trials - total_rewards
+    # Pseudo-regret: expected reward of always pulling best arm minus expected reward
+    # of arms actually pulled. Uses true rates on both sides to avoid mixing
+    # realized (binary) outcomes with expected values.
+    best_rate         = float(np.max(true_rates_arr))
+    expected_rewards  = float(np.sum(bandit.pulls * true_rates_arr))
+    regret            = best_rate * n_trials - expected_rewards
 
     return {
         "algorithm":        algorithm,
