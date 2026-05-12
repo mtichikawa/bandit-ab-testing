@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from bandits.algorithms import EpsilonGreedy, UCB1, simulate_test
 from bandits.thompson import ThompsonSampling
+from typing import Any
 
 
 # ── Construction ──────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ from bandits.thompson import ThompsonSampling
         (ThompsonSampling, {"n_arms": 4, "seed": 42}),
     ],
 )
-def test_constructs(cls, kwargs):
+def test_constructs(cls, kwargs: Any):
     bandit = cls(**kwargs)
     assert bandit.n_arms == 4
 
