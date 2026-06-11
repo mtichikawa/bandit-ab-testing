@@ -63,3 +63,5 @@ Contact: Mike Ichikawa - projects.ichikawa@gmail.com
 # Updated: 2025-12-28
 # Updated: 2026-01-14
 # Updated: 2026-02-08
+
+> _Note: regret curves are most useful when compared across algorithms on identical reward streams. A single curve in isolation can mislead — Thompson Sampling's regret looks worse than UCB1 early on while it explores, then crosses over._
