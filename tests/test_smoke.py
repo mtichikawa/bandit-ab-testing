@@ -53,7 +53,7 @@ def test_constructs(cls, kwargs: Any):
         (ThompsonSampling, {"n_arms": 4, "seed": 1}),
     ],
 )
-def test_select_arm_returns_valid_index(cls, kwargs):
+def test_select_arm_returns_valid_index(cls, kwargs: Any):
     bandit = cls(**kwargs)
     arm = bandit.select_arm()
     assert isinstance(arm, int)
