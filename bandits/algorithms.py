@@ -8,11 +8,11 @@ re-exported here for backward compatibility:
     from bandits.thompson   import ThompsonSampling  # also works
 """
 
-import numpy as np
 from typing import List, Optional
+import numpy as np
 
-# Re-export ThompsonSampling so any existing code importing it from here
 # continues to work without changes.
+# Re-export ThompsonSampling so any existing code importing it from here
 from bandits.thompson import ThompsonSampling  # noqa: F401  (re-export)
 
 
