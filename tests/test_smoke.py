@@ -70,7 +70,7 @@ def test_select_arm_returns_valid_index(cls, kwargs: Any):
         (ThompsonSampling, {"n_arms": 3, "seed": 1}),
     ],
 )
-def test_update_and_best_arm(cls, kwargs):
+def test_update_and_best_arm(cls, kwargs: Any):
     bandit = cls(**kwargs)
     # Arm 1 always wins
     for _ in range(50):
