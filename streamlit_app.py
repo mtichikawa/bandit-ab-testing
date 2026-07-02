@@ -13,6 +13,7 @@ Usage:
     streamlit run streamlit_app.py
 """
 
+from typing import Any
 import sys
 import os
 
@@ -302,7 +303,7 @@ if run_button:
         st.subheader("Summary Table")
 
         # Highlight best arm row
-        def highlight_best(row):
+        def highlight_best(row: Any):
             if row["Arm"] == f"Arm {best_arm_idx}":
                 return ["background-color: #1e4d2b"] * len(row)
             return [""] * len(row)
