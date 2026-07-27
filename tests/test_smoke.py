@@ -84,7 +84,7 @@ def test_update_and_best_arm(cls, kwargs: Any):
 # ── simulate_test end-to-end ──────────────────────────────────────────────────
 
 @pytest.mark.parametrize("algorithm", ["thompson", "ucb", "epsilon"])
-def test_simulate_test_returns_expected_keys(algorithm):
+def test_simulate_test_returns_expected_keys(algorithm: Any):
     result = simulate_test(
         true_rates=[0.1, 0.5, 0.3],
         n_trials=200,
