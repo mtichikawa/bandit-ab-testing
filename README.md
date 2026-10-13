@@ -18,10 +18,10 @@ Traditional A/B testing splits traffic 50/50 and waits for statistical significa
 
 ```bash
 pip install -r requirements.txt
-cd examples && python quick_demo.py
+python examples/quick_demo.py
 ```
 
-The demo adds the project root to the import path with a relative path, so run it from `examples/`. An interactive Streamlit version is described in `docs/streamlit_demo.md`.
+An interactive Streamlit version is described in `docs/streamlit_demo.md`.
 
 ## Usage
 
