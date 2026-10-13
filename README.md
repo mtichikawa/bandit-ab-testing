@@ -18,8 +18,10 @@ Traditional A/B testing splits traffic 50/50 and waits for statistical significa
 
 ```bash
 pip install -r requirements.txt
-python examples/quick_demo.py
+cd examples && python quick_demo.py
 ```
+
+The demo adds the project root to the import path with a relative path, so run it from `examples/`. An interactive Streamlit version is described in `docs/streamlit_demo.md`.
 
 ## Usage
 
@@ -45,23 +47,7 @@ probs = bandit.get_probabilities()
 - Bayesian statistics and Beta distributions
 - Exploration vs exploitation tradeoff
 - Regret minimization in online learning
-- Practical production considerations
 
 Contact: Mike Ichikawa - projects.ichikawa@gmail.com
 
-# Updated: 2025-09-10
-# Updated: 2025-10-20
-# Updated: 2025-10-26
-# Updated: 2025-11-01
-# Updated: 2025-11-06
-# Updated: 2025-11-12
-# Updated: 2025-11-20
-# Updated: 2025-11-26
-# Updated: 2025-12-02
-# Updated: 2025-12-08
-# Updated: 2025-12-18
-# Updated: 2025-12-28
-# Updated: 2026-01-14
-# Updated: 2026-02-08
-
-> _Note: regret curves are most useful when compared across algorithms on identical reward streams. A single curve in isolation can mislead — Thompson Sampling's regret looks worse than UCB1 early on while it explores, then crosses over._
+> _Note: regret curves are most useful when compared across algorithms on identical reward streams. A single curve in isolation can mislead. Averaged over 200 seeds of `simulate_test` (rates 0.10/0.12 and 0.05/0.10/0.15), Thompson Sampling had the lowest or near-lowest mean regret at every horizon from 25 to 2,000 trials, and UCB1 fell further behind as trials grew._
